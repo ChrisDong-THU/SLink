@@ -6,7 +6,9 @@ $ReleaseDir = [IO.Path]::GetFullPath($ReleaseDir)
 Assert-BundledDependencies
 $installer = Join-Path $ReleaseDir "SLink-$AppVersion-Setup-x64.exe"
 if (-not (Test-Path -LiteralPath $installer)) { throw 'Build the installer before packaging a release.' }
-if ((Get-Item -LiteralPath $installer).VersionInfo.ProductVersion -ne $AppVersion) {
+$versionInfo = (Get-Item -LiteralPath $installer).VersionInfo
+$installerVersion = '{0}.{1}.{2}' -f $versionInfo.ProductMajorPart, $versionInfo.ProductMinorPart, $versionInfo.ProductBuildPart
+if ($installerVersion -ne $AppVersion) {
     throw 'Installer version does not match Version.cs.'
 }
 $dirty = & git -C $RepoRoot status --porcelain --untracked-files=normal
