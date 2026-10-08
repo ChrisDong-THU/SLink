@@ -1,0 +1,41 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Build and verify bundled dependencies
+        run: ./build.ps1
+      - name: Run C#, WPF and PowerShell regression checks
+        run: ./tests/run.ps1
+      - name: Upload app and test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-x64-build
+          path: |
+            artifacts/app/
+            artifacts/tests/results.json
+            artifacts/tests/native-preview.png
+          retention-days: 14
+          if-no-files-found: error

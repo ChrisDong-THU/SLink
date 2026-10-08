@@ -1,0 +1,27 @@
+# Build products, local tools and diagnostics
+/artifacts/
+**/.build/
+**/.test/
+/src/.gitignore
+/.tools/
+/.work/
+*.user
+*.suo
+.vs/
+.vscode/
+**/obj/
+**/test-data/
+*-Setup-*.exe
+*-Setup-*.exe.sha256
+test-result.json
+native-preview.png
+.env
+.env.*
+!.env.example
+*.log
+session.json
+settings.json
+preferences.json
+health.json
+health-history.jsonl
+cancel.flag

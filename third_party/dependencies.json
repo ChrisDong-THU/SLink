@@ -1,0 +1,16 @@
+{
+  "archive": {
+    "url": "https://github.com/heiher/hev-socks5-tunnel/releases/download/2.18.0/hev-socks5-tunnel-win64.zip",
+    "sha256": "2b8cdcfdfafca4bd3732c759749547e0672217c568a0240e2570f28ca8f58bd6"
+  },
+  "files": [
+    {"name": "hev-socks5-tunnel.exe", "version": "2.18.0", "sha256": "bd78baca0619a7a7dafd15aae0443b78be8a8152e7aa35752914b5b181e4ee9e"},
+    {"name": "msys-2.0.dll", "version": "3.6.9", "sha256": "1410599ee2efcede0869abec8910398d688755952e59cf7983b15cac6de78201"},
+    {"name": "wintun.dll", "version": "0.14.1", "sha256": "e5da8447dc2c320edc0fc52fa01885c103de8c118481f683643cacc3220dafce"}
+  ],
+  "runtimeSource": {
+    "revision": "aa532e7bbf59a3ec1e29e13c9e8515d545cb2e16",
+    "sha256": "dae8563de76b43f3fa94ea0863d28bf8662672f4c94a77c2c1e47a9e7fff844c",
+    "url": "https://github.com/msys2/msys2-runtime/archive/aa532e7bbf59a3ec1e29e13c9e8515d545cb2e16.tar.gz"
+  }
+}

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting / 使用与排错
+    url: https://github.com/ChrisDong-THU/SLink/blob/main/docs/troubleshooting.md
+    about: Check common connection and installation problems.
+  - name: Security report / 安全问题
+    url: https://github.com/ChrisDong-THU/SLink/blob/main/SECURITY.md
+    about: Follow the private reporting instructions; do not disclose vulnerabilities in public issues.
