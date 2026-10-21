@@ -15,7 +15,7 @@ Download `SLink-<version>-Setup-x64.exe` from the **[latest release](https://git
 
 Requirements: Windows 10 2004 (build 19041) or later / Windows 11, x64, .NET Framework 4.8, a Wi-Fi adapter supporting Mobile Hotspot, and administrator privileges. Provide an unauthenticated SOCKS5 proxy on `127.0.0.1`; the default port is `7890` and can be changed or detected automatically.
 
-Installers are currently unsigned. Verify the repository and compare the output of `Get-FileHash .\SLink-1.1.0-Setup-x64.exe -Algorithm SHA256` with the release checksum before installation.
+Installers are currently unsigned. Verify the repository and compare the output of `Get-FileHash .\SLink-1.2.0-Setup-x64.exe -Algorithm SHA256` with the release checksum before installation.
 
 ## Use
 

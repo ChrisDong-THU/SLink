@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -18,6 +18,7 @@ using IOPath = System.IO.Path;
 namespace SLink {
 internal sealed class MainWindow {
     public readonly Window Window;
+    readonly PrimaryButtonMotion primaryMotion;
     readonly Forms.NotifyIcon tray;
     readonly DispatcherTimer poll, probeTimer, progress;
     Dictionary<string,object> state=new Dictionary<string,object>(), proxy=new Dictionary<string,object>(), prefs=Core.Load("preferences.json");
@@ -32,11 +33,14 @@ internal sealed class MainWindow {
     bool polling, probing, exiting, allowClose, showPassword, checking=true;
     int epoch, stage;
     DateTime operationStarted;
-    string error="", operationName="", stageText="", lastProgress="", dialog="", deviceKey="", lastMode="";
+    string error="", operationName="", lastProgress="", dialog="", deviceKey="", lastMode="";
     readonly Brush blue=new SolidColorBrush(Color.FromRgb(0,102,204));
     readonly Brush muted=new SolidColorBrush(Color.FromRgb(110,110,115));
     static readonly Dictionary<string,string> Paths=new Dictionary<string,string> {
-        {"power","M12,3 L12,11 M6.2,5.5 A8,8 0 1 0 17.8,5.5"},
+        {"play","M8,5 L19,12 L8,19 Z"},
+        {"search","M16,16 L21,21 M18,10 A8,8 0 1 0 2,10 A8,8 0 1 0 18,10"},
+        {"network","M8,3 L16,3 L16,9 L8,9 Z M12,9 L12,14 M4,17 L4,14 L20,14 L20,17 M1,17 L7,17 L7,22 L1,22 Z M17,17 L23,17 L23,22 L17,22 Z"},
+        {"stop","M8,5 L16,5 Q19,5 19,8 L19,16 Q19,19 16,19 L8,19 Q5,19 5,16 L5,8 Q5,5 8,5 Z"},
         {"close","M6,6 L18,18 M18,6 L6,18"},{"minus","M5,12 L19,12"},
         {"wifi","M3,8 Q12,1 21,8 M6,12 Q12,7 18,12 M9,16 Q12,13 15,16 M12,19 L12.01,19"},
         {"edit","M14,5 L19,10 M5,19 L6,14 L16,4 Q18,2 20,4 Q22,6 20,8 L10,18 Z"},
@@ -55,17 +59,19 @@ internal sealed class MainWindow {
     public T Get<T>(string name) where T:class { return Window.FindName(name) as T; }
     static UIElement Icon(string name,Brush color,double size=19) {
         var path=new System.Windows.Shapes.Path { Data=Geometry.Parse(Paths[name]),Stroke=color,StrokeThickness=1.7,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,StrokeLineJoin=PenLineJoin.Round };
+        if(name=="play"||name=="stop")path.Fill=color;
         var grid=new Grid {Width=24,Height=24};grid.Children.Add(path);
         return new Viewbox {Width=size,Height=size,Child=grid};
     }
-    void ButtonIcon(string name,string glyph,string text="",bool primary=false) {
-        var stack=new StackPanel {Orientation=Orientation.Horizontal}; stack.Children.Add(Icon(glyph,primary?Brushes.White:blue,Get<Button>(name).Style==Window.Resources["CardIconButton"]?18:19));
-        if(text.Length>0) stack.Children.Add(new TextBlock {Text=text,Foreground=primary?Brushes.White:blue,Margin=new Thickness(8,0,0,0),VerticalAlignment=VerticalAlignment.Center});
+    void ButtonIcon(string name,string glyph,string text="") {
+        var stack=new StackPanel {Orientation=Orientation.Horizontal}; stack.Children.Add(Icon(glyph,blue,Get<Button>(name).Style==Window.Resources["CardIconButton"]?18:19));
+        if(text.Length>0) stack.Children.Add(new TextBlock {Text=text,Foreground=blue,Margin=new Thickness(8,0,0,0),VerticalAlignment=VerticalAlignment.Center});
         Get<Button>(name).Content=stack;
     }
     void Click(string name,RoutedEventHandler handler) { Get<Button>(name).Click+=handler; }
-    public MainWindow(bool preview=false) {
+    public MainWindow(bool preview=false,Func<bool> animationEnabled=null) {
         using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("Main.xaml")) Window=(Window)XamlReader.Load(stream);
+        primaryMotion=new PrimaryButtonMotion(Get<Button>("Primary"),Window,animationEnabled);
         using(var stream=Assembly.GetExecutingAssembly().GetManifestResourceStream("app.ico")) Window.Icon=System.Windows.Media.Imaging.BitmapFrame.Create(stream);
         aliases=Core.Text(prefs,"aliases").Length>0 && prefs["aliases"] is Dictionary<string,object> ? (Dictionary<string,object>)prefs["aliases"] : new Dictionary<string,object>();
         prefs["aliases"]=aliases;
@@ -133,14 +139,21 @@ internal sealed class MainWindow {
     void SetError(string message) {error=message;Note(message);Render();}
     async Task Poll() {
         if(polling || exiting || operationName.Length>0)return;polling=true;int generation=epoch;
-        try { var next=await Task.Run(()=>Core.Native("Inspect"));if(generation!=epoch || exiting || operationName.Length>0)return;if(!Core.Yes(next,"ok"))next["recovery"]=File.Exists(IOPath.Combine(Core.Data,"session.json"));state=next;checking=false;if(!Core.Yes(next,"ok")) error=Core.Text(next,"error");
-            if(Core.Yes(next,"ok") && Core.Yes(next,"owned") && Core.Text(next,"hotspot")=="On") {
-                string before=Core.Json(deviceAddresses);var changes=Core.RememberDeviceAddresses(deviceAddresses,Core.Rows(next,"devices"));
-                if(changes.Count>0){rediscoverQobuz=true;Note("设备地址已变化："+string.Join("；",changes)+"。若 Qobuz 无法连接，可点击重新发现。");}
-                if(before!=Core.Json(deviceAddresses))Core.Save("preferences.json",prefs);
-            }
-            Render(); }
+        try { var next=await Task.Run(()=>NativeBridge.Execute("Inspect"));if(generation!=epoch || exiting || operationName.Length>0)return;ApplyInspection(next);Render(); }
         finally {polling=false;}
+    }
+    void ApplyInspection(Dictionary<string,object> next) {
+        if(!Core.Yes(next,"ok")) {
+            next["recovery"]=File.Exists(IOPath.Combine(Core.Data,"session.json"));
+            error=Core.Text(next,"error");
+        }
+        state=next;checking=false;
+        if(Core.Yes(next,"ok") && Core.Yes(next,"owned") && Core.Text(next,"hotspot")=="On") {
+            string before=Core.Json(deviceAddresses);
+            var changes=Core.RememberDeviceAddresses(deviceAddresses,Core.Rows(next,"devices"));
+            if(changes.Count>0){rediscoverQobuz=true;Note("设备地址已变化："+string.Join("；",changes)+"。若 Qobuz 无法连接，可点击重新发现。");}
+            if(before!=Core.Json(deviceAddresses))Core.Save("preferences.json",prefs);
+        }
     }
     async Task Probe() {
         if(probing || exiting || operationName.Length>0)return;probing=true;int generation=epoch;int port=Core.Port;
@@ -152,13 +165,14 @@ internal sealed class MainWindow {
             proxy=next;if(Core.Yes(next,"ok") && Core.Yes(state,"owned") && Core.Yes(state,"managed"))error="";Render();
             if(repair) {Note("连续检测到本地热点故障，正在恢复；保留代理进程");await Operate("Repair");}
         }
-        finally {probing=false;if(generation!=epoch && !exiting && operationName.Length==0) ScheduleProbe();}
+        finally {probing=false;if(generation!=epoch && !exiting && operationName.Length==0 && !Core.Healthy(state,proxy)) ScheduleProbe();}
     }
     void ScheduleProbe() { Window.Dispatcher.BeginInvoke(new Action(async()=>await Probe())); }
     public async Task Primary() {
         if(exiting || operationName.Length>0 || checking)return;
-        if(Core.Yes(state,"owned") || Core.Yes(state,"recovery")) {await Operate(Core.Text(state,"hotspot")=="Off" && Core.Yes(state,"owned") && Core.Yes(state,"adapter")?"Resume":"Stop");return;}
-        if(!Core.Yes(state,"ok")) {await Poll();await Probe();return;}
+        var action=ConnectionPresentation.ActionFor(state);
+        if(action==ConnectionAction.Resume || action==ConnectionAction.Stop) {await Operate(action.ToString());return;}
+        if(action==ConnectionAction.Inspect) {await Poll();await Probe();return;}
         if(Core.Text(state,"hotspot")=="On" && !Core.Yes(state,"sourceVerified")) {
             sources=Core.Rows(state,"sources").ToList();string previous=Core.Text(prefs,"previous_guid");
             if(!sources.Any(x=>Core.Text(x,"guid").Trim('{','}').Equals(previous.Trim('{','}'),StringComparison.OrdinalIgnoreCase))) {ShowDialog("source","当前热点来源","");return;}
@@ -166,31 +180,39 @@ internal sealed class MainWindow {
         await Operate("Start");
     }
     async Task Operate(string action) {
-        if(exiting || operationName.Length>0)return;operationName=action;operationStarted=DateTime.UtcNow;epoch++;Core.Cancel("inspect","probe","check");stage=action=="Start"?0:2;stageText=action=="Start"?"检测代理":"正在处理热点";error="";lastProgress="";Render();
+        if(exiting || operationName.Length>0)return;operationName=action;operationStarted=DateTime.UtcNow;epoch++;ProcessRunner.Cancel("inspect","probe","check");stage=action=="Start"?0:2;error="";proxy.Clear();lastProgress="";Render();
         bool takeover=Core.Text(state,"hotspot")=="On";string previous=Core.Text(prefs,"previous_guid");
         operation=Task.Run(()=> {
             if(action=="Start") {var p=Core.Probe(Core.Port);if(!Core.Yes(p,"ok"))return p;}
-            return Core.Native(action,takeover,previous);
+            return NativeBridge.Execute(action,takeover,previous);
         });
         var result=await operation;
-        operationName=""; if(exiting)return;
+        if(exiting)return;
         if(!Core.Yes(result,"ok"))error=Core.Text(result,"error");Note(Core.Text(result,"message",error));
-        checking=true;Render();await Poll();await Probe();
+        // Start/Resume/Repair already validate DNS and forwarding before success.
+        // Keep the operation active until its inspection and health are published together.
+        if(Core.Yes(result,"ok")&&action!="Stop")proxy=result;
+        if(Core.Yes(result,"ok")&&action=="Start")stage=3;
+        Render();
+        var inspected=await Task.Run(()=>NativeBridge.Execute("Inspect"));if(exiting)return;
+        ApplyInspection(inspected);operationName="";Render();
+        if(!Core.Yes(state,"owned")||!Core.Healthy(state,proxy))await Probe();
+        else if(probeTimer.IsEnabled){probeTimer.Stop();probeTimer.Start();}
     }
     void ReadProgress() {
-        if(operationName.Length==0 || exiting)return;
-        try { string path=IOPath.Combine(Core.Data,"progress.json");if(File.GetLastWriteTimeUtc(path)<operationStarted)return;var data=Core.Object(File.ReadAllText(path));string text=Core.Text(data,"message");if(text==lastProgress)return;lastProgress=text;Note(text);stage=text.Contains("热点")?2:text.Contains("网卡") || text.Contains("转发")?1:stage;stageText=operationName=="Stop"?"停止热点与网卡":stage==2?"开启热点":stage==1?"启动网卡":"检测代理";Render();}catch(IOException){}catch(ArgumentException){}
+        if(operationName.Length==0 || exiting || stage==3)return;
+        try { string path=IOPath.Combine(Core.Data,"progress.json");if(File.GetLastWriteTimeUtc(path)<operationStarted)return;var data=Core.Object(File.ReadAllText(path));string text=Core.Text(data,"message");if(text==lastProgress)return;lastProgress=text;Note(text);stage=text.Contains("热点")?2:text.Contains("网卡") || text.Contains("转发")?1:stage;Render();}catch(IOException){}catch(ArgumentException){}
     }
     public async Task Exit() {
         if(exiting)return;exiting=true;epoch++;poll.Stop();probeTimer.Stop();progress.Stop();Get<Grid>("Overlay").Visibility=Visibility.Collapsed;
-        try {Core.RequestExit();} catch(IOException e) {Core.Log(e.Message);Core.CancelAll();} catch(UnauthorizedAccessException e) {Core.Log(e.Message);Core.CancelAll();} Render();
-        if(operation!=null && !operation.IsCompleted) { if(await Task.WhenAny(operation,Task.Delay(12000))!=operation) Core.Cancel("start","resume","repair","stop"); await Task.WhenAny(operation,Task.Delay(2500)); }
-        var cleanup=Task.Run(()=>Core.Native("Stop"));
+        try {Core.RequestExit();} catch(IOException e) {Core.Log(e.Message);ProcessRunner.CancelAll();} catch(UnauthorizedAccessException e) {Core.Log(e.Message);ProcessRunner.CancelAll();} Render();
+        if(operation!=null && !operation.IsCompleted) { if(await Task.WhenAny(operation,Task.Delay(12000))!=operation) ProcessRunner.Cancel("start","resume","repair","stop"); await Task.WhenAny(operation,Task.Delay(2500)); }
+        var cleanup=Task.Run(()=>NativeBridge.Execute("Stop"));
         Dictionary<string,object> result;
-        if(await Task.WhenAny(cleanup,Task.Delay(12000))!=cleanup) {Core.Cancel("stop");await Task.WhenAny(cleanup,Task.Delay(1500));result=await Task.Run(()=>Core.Native("Stop",false,"",true));}
-        else {result=await cleanup;if(!Core.Yes(result,"ok")) result=await Task.Run(()=>Core.Native("Stop",false,"",true));}
+        if(await Task.WhenAny(cleanup,Task.Delay(12000))!=cleanup) {ProcessRunner.Cancel("stop");await Task.WhenAny(cleanup,Task.Delay(1500));result=await Task.Run(()=>NativeBridge.Execute("Stop",false,"",true));}
+        else {result=await cleanup;if(!Core.Yes(result,"ok")) result=await Task.Run(()=>NativeBridge.Execute("Stop",false,"",true));}
         try {Core.Save("last-exit.json",new {ok=Core.Yes(result,"ok"),message=Core.Text(result,"error"),time=DateTime.UtcNow.ToString("o")});} catch(IOException e) {Core.Log(e.Message);} catch(UnauthorizedAccessException e) {Core.Log(e.Message);}
-        Core.CancelAll();tray.Visible=false;tray.Dispose();allowClose=true;Window.Close();Application.Current.Shutdown(Core.Yes(result,"ok")?0:2);
+        ProcessRunner.CancelAll();tray.Visible=false;tray.Dispose();allowClose=true;Window.Close();Application.Current.Shutdown(Core.Yes(result,"ok")?0:2);
     }
     void ShowDialog(string kind,string title,string value) {
         dialog=kind;Get<TextBlock>("DialogTitle").Text=title;Get<TextBlock>("DialogError").Text="";
@@ -223,16 +245,25 @@ internal sealed class MainWindow {
         ButtonIcon("Qobuz",rediscoverQobuz?"refresh":"music",rediscoverQobuz?"重新发现":"Qobuz");
         Get<Button>("Qobuz").ToolTip=rediscoverQobuz?"重启 Qobuz，清除旧音响地址；不会重启热点":"打开 Qobuz；右键可重新发现音响";
         bool owned=Core.Yes(state,"owned"), on=Core.Text(state,"hotspot")=="On", good=Core.Healthy(state,proxy), active=operationName.Length>0;
-        string mode=exiting?"exit":active?"busy":checking || (owned && proxy.Count==0)?"checking":Core.Yes(state,"recovery")?"recovery":!Core.Yes(state,"ok")?"error":owned?(on && Core.Yes(state,"managed") && good && (!state.ContainsKey("routeOk")||Core.Yes(state,"routeOk"))?"online":!on?"paused":"degraded"):"idle";
-        string title=mode=="exit"?"正在退出":mode=="busy"?(operationName=="Stop"?"正在关闭":operationName=="Repair"?"正在恢复":"正在连接"):mode=="checking"?"正在检测":mode=="online"?"热点就绪":mode=="paused"?"热点已暂停":mode=="idle"?"准备连接":mode=="recovery"?"需要恢复":mode=="degraded" && healthMonitor.Failures>0 && healthMonitor.Failures<3?"正在复查":"连接需检查";
-        Get<TextBlock>("StatusTitle").Text=title;Get<TextBlock>("StatusDetail").Text=exiting?"清理网卡与热点":active?stageText:mode=="online"?"音响热点已就绪":mode=="idle"?"开启热点，让设备连接":mode=="paused"?"恢复后可继续使用":"检查代理与网络状态";
-        if(mode!=lastMode){Note(title);lastMode=mode;}
-        string action=mode=="paused"?"恢复连接":owned||Core.Yes(state,"recovery")?"断开连接":mode=="error"?"重新检测":"开启连接";
-        ButtonIcon("Primary",mode=="paused"||mode=="error"?"refresh":"power",active||exiting?"正在处理":action,true);
-        Get<Button>("Primary").IsEnabled=!(active||exiting||checking);System.Windows.Automation.AutomationProperties.SetName(Get<Button>("Primary"),action);
-        for(int i=0;i<3;i++){var bar=Get<ProgressBar>("Progress"+i);bool busy=Window.IsVisible && (active?i==stage:checking&&i==0);bar.IsIndeterminate=busy;double value=active?(i<stage?100:0):i==0?(good?100:0):i==1?(owned&&Core.Yes(state,"adapter")?100:0):(owned&&on?100:0);if(!busy && Math.Abs(bar.Value-value)>.1)bar.BeginAnimation(ProgressBar.ValueProperty,new DoubleAnimation(value,TimeSpan.FromMilliseconds(240)));}
+        var view=ConnectionPresentation.Create(state,proxy,operationName,stage,checking,exiting,healthMonitor.Failures);
+        if(view.Mode!=lastMode){Note(view.Title);lastMode=view.Mode;}
+        var primary=Get<Button>("Primary");
+        primaryMotion.Update(view.ControlState,view.Glyph,color=>Icon(view.Glyph,color,view.Glyph=="stop"?26:32));
+        primary.ToolTip=view.ToolTip;
+        primary.IsEnabled=view.Enabled;
+        System.Windows.Automation.AutomationProperties.SetName(primary,view.AccessibleName);
+        System.Windows.Automation.AutomationProperties.SetHelpText(primary,view.Status);
+        for(int i=0;i<view.Stages.Length;i++) {
+            var display=view.Stages[i];
+            var label=Get<TextBlock>("StageLabel"+i);label.Text=display.Label;label.Foreground=display.Complete||display.Busy?blue:muted;label.FontWeight=display.Complete?FontWeights.Medium:FontWeights.Normal;
+            var bar=Get<ProgressBar>("Progress"+i);bool busy=Window.IsVisible&&display.Busy;
+            bar.IsIndeterminate=busy;bar.ToolTip=display.Complete?display.Label+"已就绪":display.Label;
+            System.Windows.Automation.AutomationProperties.SetName(bar,Convert.ToString(bar.ToolTip));
+            double value=display.Complete?100:0;
+            double previous=bar.Value;bar.BeginAnimation(ProgressBar.ValueProperty,null);bar.Value=value;
+            if(Window.IsVisible&&!busy&&Math.Abs(previous-value)>.1)bar.BeginAnimation(ProgressBar.ValueProperty,new DoubleAnimation(previous,value,TimeSpan.FromMilliseconds(240)){FillBehavior=FillBehavior.Stop});
+        }
         Get<TextBlock>("HotspotName").Text=Core.Text(state,"ssid","Wi-Fi 热点");Get<TextBlock>("Broadcast").Text=on?"正在广播":"尚未开启";RenderPassword();
-        Get<Viewbox>("WifiGlyph").BeginAnimation(UIElement.OpacityProperty,on&&Window.IsVisible?new DoubleAnimation(.5,1,TimeSpan.FromSeconds(1.6)){AutoReverse=true,RepeatBehavior=RepeatBehavior.Forever}:null);
         Get<Button>("PortButton").Content="127.0.0.1 : "+Core.Port;Get<Button>("PortButton").IsEnabled=!(active||owned||exiting||Core.Yes(state,"recovery"));
         Get<Button>("EditHotspot").IsEnabled=!(active||exiting);Get<Button>("Refresh").IsEnabled=!(active||exiting);
         string visibleError=error.Length>0?error:owned&&!good?Core.Text(proxy,"error"):"";
@@ -266,7 +297,6 @@ internal sealed class MainWindow {
                 };
                 deviceRows[key]=row;
                 panel.Children.Add(row);
-                row.BeginAnimation(UIElement.OpacityProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(250)));
             }
             string signature=name+"|"+address+"|"+host+"|"+live;
             if(Convert.ToString(row.Tag)==signature)continue;

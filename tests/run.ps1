@@ -4,22 +4,28 @@ $ErrorActionPreference='Stop'
 $src=$SourceRoot
 $Output=[IO.Path]::GetFullPath($Output)
 $null=New-Item -ItemType Directory -Path $Output -Force
+$runtime=Join-Path $Output 'test-runtime'
+$fixture=Join-Path $PSScriptRoot 'fixtures/network.ps1'
+$fixtureDirectory=Join-Path $runtime 'native'
+$fixtureTarget=Join-Path $fixtureDirectory 'network.ps1'
+$null=New-Item -ItemType Directory -Path $fixtureDirectory -Force
+Copy-Item -LiteralPath $fixture -Destination $fixtureTarget -Force
 $framework=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319'
 $refs=@('System.dll','System.Core.dll','System.Web.Extensions.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Xaml.dll','WPF/WindowsBase.dll','WPF/PresentationCore.dll','WPF/PresentationFramework.dll') | ForEach-Object {'/reference:'+(Join-Path $framework $_)}
 $sources=Get-ChildItem -LiteralPath $src -Filter '*.cs' | ForEach-Object FullName
-$sources+=Join-Path $PSScriptRoot 'Tests.cs'
+$sources+=Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.cs' | ForEach-Object FullName
 $savedLib=$env:LIB
 try {
     $env:LIB=''
     # No administrator manifest: unit/UI tests never change the real network.
-    & (Join-Path $framework 'csc.exe') /nologo /target:winexe /main:SLink.Tests /platform:x64 /warn:4 /warnaserror+ "/out:$Output/Tests.exe" "/resource:$src/Main.xaml,Main.xaml" "/resource:$RepoRoot/assets/app.ico,app.ico" @refs @sources
+    & (Join-Path $framework 'csc.exe') /nologo /target:winexe /main:SLink.Tests /platform:x64 /warn:4 /warnaserror+ "/out:$runtime/Tests.exe" "/resource:$src/Main.xaml,Main.xaml" "/resource:$RepoRoot/assets/app.ico,app.ico" @refs @sources
     if($LASTEXITCODE){throw 'Test compilation failed'}
 } finally {$env:LIB=$savedLib}
 $report=Join-Path $Output 'results.json'
 if(Test-Path -LiteralPath $report){Remove-Item -LiteralPath $report}
-$process=Start-Process -FilePath (Join-Path $Output 'Tests.exe') -ArgumentList ('--self-test "'+$report+'"') -WindowStyle Hidden -PassThru
+$process=Start-Process -FilePath (Join-Path $runtime 'Tests.exe') -ArgumentList ('--self-test "'+$report+'"') -WindowStyle Hidden -PassThru
 try {
-    if(-not $process.WaitForExit(60000)){$process.Kill();$null=$process.WaitForExit(2000);throw 'Self-test timed out'}
+    if(-not $process.WaitForExit(120000)){$process.Kill();$null=$process.WaitForExit(2000);throw 'Self-test timed out'}
     $result=Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
     if($process.ExitCode -or -not $result.ok){throw ('Self-test failed: '+$result.error)}
     $result | ConvertTo-Json -Compress

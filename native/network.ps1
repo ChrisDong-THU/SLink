@@ -5,7 +5,8 @@
   [switch]$Takeover,
   [string]$PreviousGuid='',
   [int]$ProxyPort=7890,
-  [switch]$FastExit
+  [switch]$FastExit,
+  [string]$ResultPath=''
 )
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false)
@@ -358,7 +359,7 @@ try {
       Check-Connection $session $true
       $session.ready=$true;Write-Json $statePath $session
       Step '音响热点已就绪，请连接 JBL'
-      $result=@{ok=$true;message='热点已恢复。'}
+      $result=@{ok=$true;message='热点已恢复。';pid=$session.pid;adapterGuid=$session.adapterGuid;checkedAt=[DateTime]::UtcNow.ToString('o')}
     }else{
       Check-Cancel
       if(Owned-Process $session){throw '音响代理已在运行。若热点被系统关闭，请先停止再连接。'}
@@ -440,7 +441,7 @@ try {
         Check-Connection $script:session $true
         $script:session.ready=$true;Write-Json $statePath $script:session
         Step '音响热点已就绪，请连接 JBL'
-        $result=@{ok=$true;message='热点已就绪，请让 JBL 和控制手机连接该热点。'}
+        $result=@{ok=$true;message='热点已就绪，请让 JBL 和控制手机连接该热点。';pid=$script:session.pid;adapterGuid=$script:session.adapterGuid;checkedAt=[DateTime]::UtcNow.ToString('o')}
       }
     }
   }
@@ -468,4 +469,5 @@ if($Action -in @('Check','Repair')){
     [IO.File]::AppendAllText($history,($result | ConvertTo-Json -Depth 10 -Compress)+[Environment]::NewLine,[Text.UTF8Encoding]::new($false))
   }
 }
-$result | ConvertTo-Json -Depth 12 -Compress
+if($ResultPath){Write-Json $ResultPath $result}
+else{$result | ConvertTo-Json -Depth 12 -Compress}

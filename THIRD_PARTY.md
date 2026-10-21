@@ -23,7 +23,11 @@ The same archive is available from [upstream](https://github.com/msys2/msys2-run
 ## System components and build tools
 
 - [.NET Framework 4.8 / WPF](https://learn.microsoft.com/en-us/dotnet/framework/install/): provided by Windows, not redistributed by SLink.
-- [Inno Setup 7.1.0](https://github.com/jrsoftware/issrc/releases/tag/is-7_1_0): compiler used to build the installer. The official compiler download is pinned and checked by `scripts/install-build-tools.ps1`. Consult Inno Setup's own terms for your intended use.
+- [Inno Setup 6.7.3](https://github.com/jrsoftware/issrc/releases/tag/is-6_7_3): compiler used to build the installer. The official compiler download is pinned and checked by `scripts/install-build-tools.ps1`. Consult Inno Setup's own terms for your intended use.
 - [Apple design reference by VoltAgent](https://github.com/VoltAgent/awesome-design-md): design reference, [MIT notice](licenses/Design-reference-MIT.txt); not a runtime dependency.
 
 The installer includes SLink's `LICENSE`, this notice, and the complete `licenses/` directory.
+
+## Installer design reference
+
+The compact Inno Setup page layout is adapted from WebDesk. Its MIT notice is preserved in `licenses/WebDesk-MIT.txt`. The SLink application retains its original C# / WPF architecture and does not bundle Flutter or WebDesk runtime components.

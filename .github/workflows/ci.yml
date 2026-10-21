@@ -37,5 +37,6 @@ jobs:
             artifacts/app/
             artifacts/tests/results.json
             artifacts/tests/native-preview.png
+            artifacts/tests/primary-states.png
           retention-days: 14
           if-no-files-found: error

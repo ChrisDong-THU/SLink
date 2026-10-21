@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -19,7 +19,7 @@ internal static class Program {
                 if(signaled && (args.Contains("--wait") || args.Contains("--prepare-install"))) {
                     try { using(var mutex=Mutex.OpenExisting(InstanceName)) { try {if(!mutex.WaitOne(50000))return 1;}catch(AbandonedMutexException){} mutex.ReleaseMutex();} } catch(WaitHandleCannotBeOpenedException) {}
                 }
-                if(!signaled && File.Exists(Path.Combine(Core.Data,"session.json"))) { var result=Core.Native("Stop"); if(!Core.Yes(result,"ok"))return 2; }
+                if(!signaled && File.Exists(Path.Combine(Core.Data,"session.json"))) { var result=NativeBridge.Execute("Stop"); if(!Core.Yes(result,"ok"))return 2; }
                 if(args.Contains("--prepare-install")) {
                     int i=Array.IndexOf(args,"--prepare-install");if(i+1>=args.Length)return 3;
                     string old=Path.GetFullPath(args[i+1]);

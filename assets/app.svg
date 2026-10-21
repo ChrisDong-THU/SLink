@@ -1,8 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <title>SLink application icon</title>
-  <rect x="4" y="4" width="120" height="120" rx="28" fill="#0066cc"/>
-  <g transform="translate(22 22) scale(3.5)" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10 13a5 5 0 0 0 7.071 0l3-3a5 5 0 0 0-7.071-7.071l-1.6 1.6"/>
-    <path d="M14 11a5 5 0 0 0-7.071 0l-3 3a5 5 0 0 0 7.071 7.071l1.6-1.6"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>SLink</title>
+  <desc>Two connected links on a blue rounded square.</desc>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1682F2"/>
+      <stop offset="1" stop-color="#0056BC"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="232" height="232" rx="54" fill="url(#blue)"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M110,146 C98,134 98,114 110,102 L146,66 C158,54 178,54 190,66 C202,78 202,98 190,110 L170,130"/>
+    <path d="M146,110 C158,122 158,142 146,154 L110,190 C98,202 78,202 66,190 C54,178 54,158 66,146 L86,126"/>
   </g>
 </svg>

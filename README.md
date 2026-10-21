@@ -26,7 +26,7 @@ SLink 是一个轻量的 Windows 桌面工具，主要面向 JBL 等音响通过
 校验下载的文件：
 
 ```powershell
-Get-FileHash .\SLink-1.1.0-Setup-x64.exe -Algorithm SHA256
+Get-FileHash .\SLink-1.2.0-Setup-x64.exe -Algorithm SHA256
 ```
 
 将输出与 Release 中 `.sha256` 文件的内容比较，然后运行安装程序。

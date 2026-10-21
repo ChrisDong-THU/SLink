@@ -32,6 +32,57 @@
     </ControlTemplate.Triggers>
    </ControlTemplate></Setter.Value></Setter>
   </Style>
+  <Style x:Key="PowerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+   <Setter Property="Width" Value="112"/><Setter Property="Height" Value="112"/><Setter Property="Padding" Value="0"/>
+   <Setter Property="Background" Value="#EBF3FC"/><Setter Property="Foreground" Value="{StaticResource Blue}"/>
+   <Setter Property="BorderBrush" Value="#D6E5F5"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+   <Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="HorizontalContentAlignment" Value="Center"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+    <Grid>
+     <Ellipse Margin="4" Stroke="#E3EAF2" StrokeThickness="2.5"/>
+     <Ellipse x:Name="Ring" Margin="4" Stroke="{TemplateBinding BorderBrush}" StrokeThickness="2.5" StrokeDashCap="Round"/>
+     <Ellipse x:Name="Echo" Margin="10" Stroke="{TemplateBinding BorderBrush}" StrokeThickness="2" Opacity="0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5"/>
+     <Ellipse x:Name="Plate" Margin="10" Fill="{TemplateBinding Background}" RenderTransformOrigin="0.5,0.5">
+      <Ellipse.Effect><DropShadowEffect Color="#184B80" BlurRadius="10" ShadowDepth="3" Opacity="0.08"/></Ellipse.Effect>
+     </Ellipse>
+     <Ellipse x:Name="Hover" Margin="10" Fill="#0066CC" Opacity="0"/>
+     <ContentPresenter x:Name="Glyph" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5"/>
+     <Border x:Name="Badge" Width="23" Height="23" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Background="#0066CC" BorderBrush="#F5F5F7" BorderThickness="3" CornerRadius="12" Visibility="Collapsed" IsHitTestVisible="False">
+      <Viewbox Width="10" Height="10"><Path x:Name="BadgeGlyph" Data="M2,6 L5,9 L11,2" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/></Viewbox>
+     </Border>
+     <Ellipse x:Name="FocusRing" Margin="0" Stroke="#0066CC" StrokeThickness="2" Visibility="Collapsed" IsHitTestVisible="False"/>
+    </Grid><ControlTemplate.Triggers>
+     <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True"/><Condition Property="IsEnabled" Value="True"/></MultiTrigger.Conditions><Setter TargetName="Hover" Property="Opacity" Value="0.07"/><Setter TargetName="Ring" Property="Stroke" Value="#70ADEB"/></MultiTrigger>
+     <Trigger Property="IsPressed" Value="True"><Setter TargetName="Hover" Property="Opacity" Value="0.18"/><Setter TargetName="Plate" Property="Effect" Value="{x:Null}"/></Trigger>
+     <Trigger Property="Tag" Value="connecting"><Setter TargetName="Ring" Property="StrokeDashArray" Value="34,97"/></Trigger>
+     <Trigger Property="Tag" Value="checking"><Setter TargetName="Ring" Property="StrokeDashArray" Value="18,113"/></Trigger>
+     <Trigger Property="Tag" Value="closing"><Setter TargetName="Ring" Property="StrokeDashArray" Value="34,97"/><Setter TargetName="Plate" Property="Effect" Value="{x:Null}"/></Trigger>
+     <Trigger Property="Tag" Value="online"><Setter TargetName="Badge" Property="Visibility" Value="Visible"/></Trigger>
+     <Trigger Property="Tag" Value="paused"><Setter TargetName="Badge" Property="Visibility" Value="Visible"/><Setter TargetName="Badge" Property="Background" Value="#7E91A9"/><Setter TargetName="BadgeGlyph" Property="Data" Value="M3,2 L3,10 M9,2 L9,10"/></Trigger>
+     <Trigger Property="Tag" Value="attention"><Setter TargetName="Badge" Property="Visibility" Value="Visible"/><Setter TargetName="Badge" Property="Background" Value="#6E7C8E"/><Setter TargetName="BadgeGlyph" Property="Data" Value="M6,1 L6,7 M6,11 L6,11.1"/></Trigger>
+     <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow"/></Trigger>
+     <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="FocusRing" Property="Visibility" Value="Visible"/></Trigger>
+    </ControlTemplate.Triggers>
+   </ControlTemplate></Setter.Value></Setter>
+   <Style.Triggers>
+    <Trigger Property="Tag" Value="online"><Setter Property="Background" Value="#0066CC"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderBrush" Value="#80B4E8"/></Trigger>
+    <Trigger Property="Tag" Value="connecting"><Setter Property="Background" Value="#F5F9FE"/><Setter Property="BorderBrush" Value="#2681DC"/></Trigger>
+    <Trigger Property="Tag" Value="checking"><Setter Property="Background" Value="#F5F9FE"/><Setter Property="BorderBrush" Value="#6D9ECB"/></Trigger>
+    <Trigger Property="Tag" Value="closing"><Setter Property="Background" Value="#EBEDF1"/><Setter Property="Foreground" Value="#7A8797"/><Setter Property="BorderBrush" Value="#9EAAB9"/></Trigger>
+    <Trigger Property="Tag" Value="paused"><Setter Property="Background" Value="#EDF3FA"/><Setter Property="BorderBrush" Value="#B6CBE1"/></Trigger>
+    <Trigger Property="Tag" Value="attention"><Setter Property="Background" Value="#EDF2F8"/><Setter Property="BorderBrush" Value="#9DAFC4"/></Trigger>
+   </Style.Triggers>
+  </Style>
+  <Style x:Key="StageLabel" TargetType="TextBlock">
+   <Setter Property="FontSize" Value="12"/><Setter Property="HorizontalAlignment" Value="Center"/>
+   <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+  </Style>
+  <Style TargetType="ProgressBar">
+   <Setter Property="Margin" Value="0,10,0,0"/><Setter Property="Height" Value="4"/>
+   <Setter Property="BorderThickness" Value="0"/><Setter Property="Background" Value="#E5E8ED"/>
+   <Setter Property="Foreground" Value="{StaticResource Blue}"/><Setter Property="Maximum" Value="100"/>
+  </Style>
   <Style x:Key="DeviceCard" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
    <Setter Property="Height" Value="80"/><Setter Property="Padding" Value="18,0"/>
    <Setter Property="Margin" Value="0,0,0,10"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -49,20 +100,17 @@
  </Window.Resources>
  <Grid>
   <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-  <Grid x:Name="Chrome"><StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,3,8,3">
+  <Grid x:Name="Chrome" Background="Transparent"><StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,3,8,3">
    <Button x:Name="Minimize" Width="36" Padding="8" ToolTip="最小化" AutomationProperties.Name="最小化"/>
    <Button x:Name="HideButton" Width="36" Padding="8" ToolTip="隐藏到托盘" AutomationProperties.Name="隐藏到托盘"/>
   </StackPanel></Grid>
   <Grid Grid.Row="1" Margin="32,12,32,18">
    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="58"/><RowDefinition Height="*"/><RowDefinition Height="50"/></Grid.RowDefinitions>
-   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <StackPanel><TextBlock x:Name="StatusTitle" Text="正在检测" FontSize="28" FontWeight="SemiBold"/><TextBlock x:Name="StatusDetail" Text="检查代理与网络状态" Foreground="{StaticResource Muted}" Margin="0,7,0,0" FontSize="12"/></StackPanel>
-    <Button x:Name="Primary" Grid.Column="1" Background="{StaticResource Blue}" Foreground="White" VerticalAlignment="Center" Padding="17,13" Margin="12,0,0,0" AutomationProperties.Name="开启连接"/>
-   </Grid>
-   <UniformGrid Grid.Row="1" Columns="3" Margin="0,25,0,24">
-    <StackPanel Margin="0,0,8,0"><TextBlock Text="代理" FontSize="11" Foreground="{StaticResource Muted}"/><ProgressBar x:Name="Progress0" Margin="0,8,0,0" Height="3" BorderThickness="0" Background="#E5E5EA" Foreground="{StaticResource Blue}" Maximum="100"/></StackPanel>
-    <StackPanel Margin="4,0,4,0"><TextBlock Text="网卡" FontSize="11" Foreground="{StaticResource Muted}"/><ProgressBar x:Name="Progress1" Margin="0,8,0,0" Height="3" BorderThickness="0" Background="#E5E5EA" Foreground="{StaticResource Blue}" Maximum="100"/></StackPanel>
-    <StackPanel Margin="8,0,0,0"><TextBlock Text="热点" FontSize="11" Foreground="{StaticResource Muted}"/><ProgressBar x:Name="Progress2" Margin="0,8,0,0" Height="3" BorderThickness="0" Background="#E5E5EA" Foreground="{StaticResource Blue}" Maximum="100"/></StackPanel>
+   <Button x:Name="Primary" Style="{StaticResource PowerButton}" Margin="0,2,0,0" AutomationProperties.Name="开启连接"/>
+   <UniformGrid Grid.Row="1" Columns="3" Margin="0,22,0,26">
+    <StackPanel Margin="0,0,8,0"><TextBlock x:Name="StageLabel0" Style="{StaticResource StageLabel}" Text="检测代理"/><ProgressBar x:Name="Progress0"/></StackPanel>
+    <StackPanel Margin="4,0,4,0"><TextBlock x:Name="StageLabel1" Style="{StaticResource StageLabel}" Text="等待网卡"/><ProgressBar x:Name="Progress1"/></StackPanel>
+    <StackPanel Margin="8,0,0,0"><TextBlock x:Name="StageLabel2" Style="{StaticResource StageLabel}" Text="等待热点"/><ProgressBar x:Name="Progress2"/></StackPanel>
    </UniformGrid>
    <Border x:Name="ErrorPanel" Grid.Row="2" Background="#FFF0EC" CornerRadius="10" Margin="0,0,0,12" Visibility="Collapsed"><TextBlock x:Name="ErrorText" Foreground="#A84229" Margin="12" TextWrapping="Wrap" MaxHeight="48"/></Border>
    <Border x:Name="HotspotCard" Grid.Row="3" Background="White" CornerRadius="16" Padding="18" BorderBrush="Transparent" BorderThickness="1">
@@ -84,6 +132,7 @@
    <Grid Grid.Row="4" Margin="0,10,0,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="设备" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/><Border Background="#E9E9ED" CornerRadius="9" MinWidth="22" Height="20" Margin="8,0,0,0" Padding="6,0"><TextBlock x:Name="DeviceCount" Text="0" FontFamily="Segoe UI" FontSize="11" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></StackPanel><Button x:Name="Refresh" HorizontalAlignment="Right" Style="{StaticResource CardIconButton}" ToolTip="刷新" AutomationProperties.Name="刷新设备"/></Grid>
    <Grid Grid.Row="5"><TextBlock x:Name="Empty" Text="等待设备连接" Foreground="#86868B" HorizontalAlignment="Center" VerticalAlignment="Center"/><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="Devices"/></ScrollViewer></Grid>
    <Grid Grid.Row="6" Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions>
+    <Border Grid.ColumnSpan="3" Height="1" Background="#E5E5EA" VerticalAlignment="Top"/>
     <Button x:Name="PortButton" HorizontalAlignment="Left" Padding="0,8" FontSize="11" Foreground="{StaticResource Muted}"/>
     <Button x:Name="Qobuz" Grid.Column="1" Padding="10,8" ToolTip="打开 Qobuz"/>
     <Button x:Name="Diagnostics" Grid.Column="2" Padding="8" ToolTip="诊断" AutomationProperties.Name="诊断"/>
